@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Readable titles in Obsidian
+
+- Managed notes now carry an Obsidian `aliases` property generated from the title, so notes can be found by title while filenames stay UUIDs. The property is regenerated on every write and ignored on read; notes without it remain valid. Versions before this change reject notes that contain `aliases`, so update every machine that writes to a shared vault.
+
 ### v0.2 — typed memory graph and UNO Q host recipe
 
 - Explicit per-memory relations: supports, contradicts, depends_on and related_to, with rationale and project restrictions; scoped add/remove operations.
