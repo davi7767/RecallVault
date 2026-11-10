@@ -1,8 +1,23 @@
 import { parse, stringify } from 'yaml';
+import { z } from 'zod';
 import { metadataSchema, VaultError, type Memory, type Metadata } from './schema.js';
 
 const GRAPH_START = '<!-- recallvault:links:start -->';
 const GRAPH_END = '<!-- recallvault:links:end -->';
+
+// Obsidian accepts one alias as a string or several as a list.
+const obsidianAliasesSchema = z.union([z.string(), z.array(z.string()).max(50)]);
+
+// Obsidian uses `aliases` to find a note by its title in search and link suggestions,
+// even though the filename is a UUID. RecallVault regenerates it from the title on every
+// write and ignores it on read, so a stale alias can never override the real title.
+function withoutObsidianAliases(frontmatter: unknown): unknown {
+  if (!frontmatter || typeof frontmatter !== 'object' || Array.isArray(frontmatter)) return frontmatter;
+  if (!('aliases' in frontmatter)) return frontmatter;
+  const { aliases, ...rest } = frontmatter as Record<string, unknown>;
+  obsidianAliasesSchema.parse(aliases);
+  return rest;
+}
 
 export function serializeMemory(meta: Metadata, content: string): string {
   const links = meta.relations.length === 0
@@ -10,14 +25,15 @@ export function serializeMemory(meta: Metadata, content: string): string {
     : `\n\n${GRAPH_START}\n\n## Related memories\n\n${meta.relations
         .map((r) => `- ${r.type.replaceAll('_', ' ')}: [[${r.target}]] — ${r.rationale.replace(/[\r\n\[\]<>|]/g, ' ')}`)
         .join('\n')}\n\n${GRAPH_END}`;
-  return `---\n${stringify(meta, { lineWidth: 0 })}---\n\n# ${meta.title}\n\n${content.trim()}${links}\n`;
+  const frontmatter = { ...meta, aliases: [meta.title] };
+  return `---\n${stringify(frontmatter, { lineWidth: 0 })}---\n\n# ${meta.title}\n\n${content.trim()}${links}\n`;
 }
 
 export function parseMemory(raw: string, relativePath: string): Memory {
   const match = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/.exec(raw);
   if (!match) throw new VaultError('INVALID_NOTE', `Missing YAML frontmatter: ${relativePath}`);
   try {
-    const meta = metadataSchema.parse(parse(match[1]!, { maxAliasCount: 0 }));
+    const meta = metadataSchema.parse(withoutObsidianAliases(parse(match[1]!, { maxAliasCount: 0 })));
     let body = match[2]!.trim();
     const lines = body.split(/\r?\n/);
     if (lines[0]?.startsWith('# ')) {

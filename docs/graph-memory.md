@@ -29,6 +29,12 @@ RecallVault writes a generated section at the end of the source note:
 
 Obsidian Graph View uses these native `[[UUID]]` wikilinks to connect **actual memory note files**; there is no duplicated parallel graph folder. RecallVault removes this generated section from the text returned to AI agents, so graph links do not pollute the persisted memory content or keyword search. Keep the generated marker section intact and edit the YAML properties through the agent tools. If you manually update `relations` in YAML, refresh the generated links by calling `relate_memory` for new relations or using a full-note update in a future release; manually editing the generated links alone does not modify typed relations.
 
+### Readable titles in Obsidian
+
+Filenames stay as canonical UUIDs, because links and the index depend on them. Each note also gets an `aliases` property with its title, so Obsidian's quick switcher, search and link suggestions find the note by title. RecallVault regenerates `aliases` from `title` on every write and ignores it on read: to rename a memory, change `title` and the heading, not the alias. Notes written by older versions gain the property the next time RecallVault updates them.
+
+The file explorer, tabs and Graph View still label notes by filename. To show titles there, install the community plugin **Front Matter Title** and set it to read the `title` property. RecallVault does not depend on the plugin.
+
 ## CLI usage
 
 Store two distinct memories first, inspect their UUIDs, and then link them:
